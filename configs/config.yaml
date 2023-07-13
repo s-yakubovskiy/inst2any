@@ -1,0 +1,15 @@
+instagram:
+  access_token: ""
+  api: https://graph.facebook.com/v17.0
+  account_id: "17841401562555719"
+  last_posts_count: 8
+  last_stories_count: 12
+vk:
+  access_token: ""
+  owner_id: 809715419
+database:
+  dsn: ./media.db
+gcs:
+  bucket_name: inst2vk-gcs
+  credentials_file_path: .creds/inst2vk-sa.json
+sleep_interval: 30

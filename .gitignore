@@ -1,0 +1,7 @@
+/bin
+/.creds
+/configs/config.prod.yaml
+/configs/config.prod-test.yaml
+/media.db
+/media-main.db
+
