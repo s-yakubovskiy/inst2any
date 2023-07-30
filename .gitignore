@@ -4,4 +4,5 @@
 /configs/config.prod-test.yaml
 /media.db
 /media-main.db
+/vendor
 
