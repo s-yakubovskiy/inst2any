@@ -2,10 +2,13 @@ package daemon
 
 import (
 	"context"
+	"log"
 )
 
 type Worker interface {
 	Work(context.Context)
+	Enabled() bool
+	Name() string
 }
 
 type Daemon struct {
@@ -21,6 +24,10 @@ func NewDaemon(workers ...Worker) *Daemon {
 func (d *Daemon) Start(ctx context.Context) {
 	// Start each worker in its own goroutine
 	for _, worker := range d.workers {
-		go worker.Work(ctx)
+		if worker.Enabled() {
+			go worker.Work(ctx)
+		} else {
+			log.Println(worker.Name(), "is disabled")
+		}
 	}
 }

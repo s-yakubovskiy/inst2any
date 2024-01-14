@@ -1,3 +1,9 @@
+workers:
+  instagram:
+    story:
+      enabled: true
+    post:
+      enabled: false
 instagram:
   access_token: ""
   api: https://graph.facebook.com/v17.0

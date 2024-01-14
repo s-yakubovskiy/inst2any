@@ -34,8 +34,16 @@ func NewStoryWorker(cfg *config.Config, database *sql.DB, gcsClient *storage.GCS
 	}
 }
 
+func (m *StoryWorker) Name() string {
+	return "[worker:story]"
+}
+
+func (m *StoryWorker) Enabled() bool {
+	return m.cfg.Workers.Instagram.Story.Enabled
+}
+
 func (m *StoryWorker) Work(ctx context.Context) {
-	log.Printf("[worker:story] StoryWorker run")
+	log.Println(m.Name(), "StoryWorker run")
 	for {
 		select {
 		case <-ctx.Done():
@@ -43,7 +51,7 @@ func (m *StoryWorker) Work(ctx context.Context) {
 			return
 		default:
 			m.processMedia(ctx)
-			// Sleep for the configured duration before checking for new media
+			// Sleep for the configured duration before checking for new story
 			select {
 			case <-time.After(time.Duration(m.cfg.SleepInterval) * time.Second):
 			case <-ctx.Done():
@@ -55,57 +63,56 @@ func (m *StoryWorker) Work(ctx context.Context) {
 	}
 }
 
-func (d *StoryWorker) processMedia(ctx context.Context) {
-	// Fetch media ids
-	ids, err := d.metaClient.FetchMediaIds("stories")
+func (m *StoryWorker) processMedia(ctx context.Context) {
+	// Fetch story ids
+	ids, err := m.metaClient.FetchMediaIds("stories")
 	if err != nil {
-		log.Printf("[worker:story]: Failed to fetch media ids: %v", err)
+		log.Printf("%s Failed to fetch story ids: %v", m.Name(), err)
 		return
 	}
 
-	// For each id, fetch the media details
+	// For each id, fetch the story details
 	for _, id := range ids {
-		d.syncStory(ctx, id)
+		m.syncStory(ctx, id)
 	}
 }
 
-func (d *StoryWorker) syncStory(ctx context.Context, id string) {
-	synced, err := db.CheckAndInsert(id, "stories", d.database)
+func (m *StoryWorker) syncStory(ctx context.Context, id string) {
+	synced, err := db.CheckAndInsert(id, "stories", m.database)
 	if err != nil {
-		log.Printf("[worker:story]: Failed to check and insert story id: %v", err)
+		log.Printf("%s Failed to check and insert story id: %v", m.Name(), err)
 		return
 	}
 
 	if synced {
-		log.Printf("[worker:story:db] %+v %s\n", id, "is already synced.")
+		log.Printf("%s (db) %+v %s\n", m.Name(), id, "is already synced.")
 		return
 	}
 
-	media, err := d.metaClient.FetchMediaDetail(id)
-	// fmt.Printf("[insta] %+v | id %+v\n", media.MediaURL, id)
+	media, err := m.metaClient.FetchMediaDetail(id)
+	// fmt.Printf("[insta] %+v | id %+v\n", story.MediaURL, id)
 	if err != nil {
-		log.Printf("[worker:story]: Failed to fetch media details: %v", err)
+		log.Printf("[worker:story]: Failed to fetch story details: %v", err)
 		return
 	}
 
-	// download current media to mediaReader with retry 3
-	mediaReader, err := downloader.DownloadFile(media.MediaURL)
-
+	// download current story to storyReader with retry 3
+	storyReader, err := downloader.DownloadFile(media.MediaURL)
 	if err != nil {
-		fmt.Println("[worker:story]: Error downloading file:", err)
+		fmt.Println(m.Name(), "Error downloading file:", err)
 		return
 	}
 
-	// Upload the media to GCS
-	err = d.gcsClient.Upload(ctx, "stories", id, mediaReader)
+	// Upload the story to GCS
+	err = m.gcsClient.Upload(ctx, "stories", id, storyReader)
 
 	if err != nil {
-		log.Printf("[worker:story]: Failed to upload to GCS: %v", err)
+		log.Printf("%s Failed to upload to GCS: %v", m.Name(), err)
 		return
 	}
 
 	// Upload to VK
-	urlDL := d.gcsClient.ReturnPublicURL(ctx, "stories", id)
+	urlDL := m.gcsClient.ReturnPublicURL(ctx, "stories", id)
 
 	resp, err := http.Get(urlDL)
 	if err != nil {
@@ -120,21 +127,21 @@ func (d *StoryWorker) syncStory(ctx context.Context, id string) {
 	}
 
 	if media.MediaType == "IMAGE" {
-		err = d.vkClient.UploadStoryPhoto(resp.Body)
+		err = m.vkClient.UploadStoryPhoto(resp.Body)
 	} else {
-		err = d.vkClient.UploadStoryVideo(resp.Body)
+		err = m.vkClient.UploadStoryVideo(resp.Body)
 	}
 	if err != nil {
-		log.Printf("[worker:story] Failed to vk upload: %+v\n", err)
+		log.Printf("%s Failed to vk upload: %+v\n", m.Name(), err)
 		return
 	}
 
-	// If media is successfully uploaded, update the media record as synced in the database
-	err = db.MarkAsSynced(id, "stories", d.database)
+	// If story is successfully uploaded, update the story record as synced in the database
+	err = db.MarkAsSynced(id, "stories", m.database)
 	if err != nil {
-		log.Printf("[worker:story:db]Failed to update story as synced: %v", err)
+		log.Printf("%s (db) Failed to update story as synced: %v", m.Name(), err)
 		return
 	}
 
-	log.Printf("[worker:story:inst2vk] Successfully transferred story id: %s\n", id)
+	log.Printf("%s Successfully transferred & synced story id: %s\n", m.Name(), id)
 }

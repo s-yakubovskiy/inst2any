@@ -34,8 +34,16 @@ func NewMediaWorker(cfg *config.Config, database *sql.DB, gcsClient *storage.GCS
 	}
 }
 
+func (m *MediaWorker) Name() string {
+	return "[worker:media]"
+}
+
+func (m *MediaWorker) Enabled() bool {
+	return m.cfg.Workers.Instagram.Post.Enabled
+}
+
 func (m *MediaWorker) Work(ctx context.Context) {
-	log.Printf("[worker:media] MediaWorker run")
+	log.Println(m.Name(), "MediaWorker run")
 	for {
 		select {
 		case <-ctx.Done():
@@ -55,57 +63,56 @@ func (m *MediaWorker) Work(ctx context.Context) {
 	}
 }
 
-func (d *MediaWorker) processMedia(ctx context.Context) {
+func (m *MediaWorker) processMedia(ctx context.Context) {
 	// Fetch media ids
-	ids, err := d.metaClient.FetchMediaIds("media")
+	ids, err := m.metaClient.FetchMediaIds("media")
 	if err != nil {
-		log.Printf("[worker:media]Failed to fetch media ids: %v", err)
+		log.Printf("%s Failed to fetch media ids: %v", m.Name(), err)
 		return
 	}
 
 	// For each id, fetch the media details
 	for _, id := range ids {
-		d.syncMedia(ctx, id)
+		m.syncMedia(ctx, id)
 	}
 }
 
-func (d *MediaWorker) syncMedia(ctx context.Context, id string) {
-	synced, err := db.CheckAndInsert(id, "media", d.database)
+func (m *MediaWorker) syncMedia(ctx context.Context, id string) {
+	synced, err := db.CheckAndInsert(id, "media", m.database)
 	if err != nil {
-		log.Printf("[worker:media] Failed to check and insert media id: %v", err)
+		log.Printf("%s Failed to check and insert media id: %v", m.Name(), err)
 		return
 	}
 
 	if synced {
-		log.Printf("[worker:media:db] %+v %s\n", id, "is already synced.")
+		log.Printf("%s (db) %+v %s\n", m.Name(), id, "is already synced.")
 		return
 	}
 
-	media, err := d.metaClient.FetchMediaDetail(id)
+	media, err := m.metaClient.FetchMediaDetail(id)
 	// fmt.Printf("[insta] %+v | id %+v\n", media.MediaURL, id)
 	if err != nil {
-		log.Printf("[worker:media] Failed to fetch media details: %v", err)
+		log.Printf("%s Failed to fetch media details: %v", m.Name(), err)
 		return
 	}
 
 	// download current media to mediaReader with retry 3
 	mediaReader, err := downloader.DownloadFile(media.MediaURL)
-
 	if err != nil {
-		fmt.Println("[worker:media] Error downloading file:", err)
+		fmt.Println(m.Name(), "Error downloading file:", err)
 		return
 	}
 
 	// Upload the media to GCS
-	err = d.gcsClient.Upload(ctx, "posts", id, mediaReader)
+	err = m.gcsClient.Upload(ctx, "posts", id, mediaReader)
 
 	if err != nil {
-		log.Printf("[worker:media] Failed to upload to GCS: %v", err)
+		log.Printf("%s Failed to upload to GCS: %v", m.Name(), err)
 		return
 	}
 
 	// Upload to VK
-	urlDL := d.gcsClient.ReturnPublicURL(ctx, "posts", id)
+	urlDL := m.gcsClient.ReturnPublicURL(ctx, "posts", id)
 
 	resp, err := http.Get(urlDL)
 	if err != nil {
@@ -120,21 +127,21 @@ func (d *MediaWorker) syncMedia(ctx context.Context, id string) {
 	}
 
 	if media.MediaType == "IMAGE" {
-		err = d.vkClient.UploadWallPhoto(media.Caption, media.Caption, resp.Body)
+		err = m.vkClient.UploadWallPhoto(media.Caption, media.Caption, resp.Body)
 	} else {
-		err = d.vkClient.UploadVideo(media.Caption, media.Caption, resp.Body)
+		err = m.vkClient.UploadVideo(media.Caption, media.Caption, resp.Body)
 	}
 	if err != nil {
-		log.Printf("[worker:media] Failed to vk upload: %+v\n", err)
+		log.Printf("%s Failed to vk upload: %+v\n", m.Name(), err)
 		return
 	}
 
 	// If media is successfully uploaded, update the media record as synced in the database
-	err = db.MarkAsSynced(id, "media", d.database)
+	err = db.MarkAsSynced(id, "media", m.database)
 	if err != nil {
-		log.Printf("[worker:media:db] Failed to update media as synced: %v", err)
+		log.Printf("%s (db) Failed to update media as synced: %v", m.Name(), err)
 		return
 	}
 
-	log.Printf("[worker:media:inst2vk] Successfully transferred & synced media id: %s\n", id)
+	log.Printf("%s Successfully transferred & synced media id: %s\n", m.Name(), id)
 }

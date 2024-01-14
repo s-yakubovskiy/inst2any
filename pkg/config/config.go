@@ -12,6 +12,18 @@ type Config struct {
 	Database      DatabaseConfig  `yaml:"database"`
 	GCS           GCSConfig       `yaml:"gcs"`
 	SleepInterval int64           `yaml:"sleep_interval"`
+	Workers       Workers         `yaml:"workers"`
+}
+
+type Workers struct {
+	Instagram struct {
+		Story struct {
+			Enabled bool `yaml:"enabled"`
+		} `yaml:"story"`
+		Post struct {
+			Enabled bool `yaml:"enabled"`
+		} `yaml:"post"`
+	} `yaml:"instagram"`
 }
 
 type InstagramConfig struct {
