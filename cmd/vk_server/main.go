@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/s-yakubovskiy/inst2vk/pkg/config"
-	"github.com/s-yakubovskiy/inst2vk/pkg/server"
-	"github.com/s-yakubovskiy/inst2vk/pkg/vk"
+	"github.com/s-yakubovskiy/inst2any/pkg/config"
+	"github.com/s-yakubovskiy/inst2any/pkg/server"
+	"github.com/s-yakubovskiy/inst2any/pkg/vk"
 )
 
 func main() {

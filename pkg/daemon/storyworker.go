@@ -8,12 +8,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/s-yakubovskiy/inst2vk/pkg/config"
-	"github.com/s-yakubovskiy/inst2vk/pkg/db"
-	"github.com/s-yakubovskiy/inst2vk/pkg/downloader"
-	"github.com/s-yakubovskiy/inst2vk/pkg/instagram"
-	"github.com/s-yakubovskiy/inst2vk/pkg/storage"
-	"github.com/s-yakubovskiy/inst2vk/pkg/vk"
+	"github.com/s-yakubovskiy/inst2any/pkg/config"
+	"github.com/s-yakubovskiy/inst2any/pkg/db"
+	"github.com/s-yakubovskiy/inst2any/pkg/downloader"
+	"github.com/s-yakubovskiy/inst2any/pkg/instagram"
+	"github.com/s-yakubovskiy/inst2any/pkg/storage"
+	"github.com/s-yakubovskiy/inst2any/pkg/vk"
 )
 
 type StoryWorker struct {

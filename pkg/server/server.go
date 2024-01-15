@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/s-yakubovskiy/inst2vk/pkg/vk"
+	"github.com/s-yakubovskiy/inst2any/pkg/vk"
 )
 
 type UploadVideoRequest struct {

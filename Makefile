@@ -1,7 +1,7 @@
 .PHONY: all build clean test
 
 # Binary name
-BINARY = inst2vk
+BINARY = inst2any
 
 # Destination
 DESTDIR = ./bin
@@ -18,8 +18,8 @@ LDFLAGS=-a -tags netgo -ldflags '-w -extldflags "-static"'
 
 # Builds the project
 build:
-	go build $(LDFLAGS) -o $(DESTDIR)/$(BINARY) ./cmd/inst2vk
-	# CGO_ENABLED=1 go build $(LDFLAGS) -o $(DESTDIR)/$(BINARY)_static_cgo ./cmd/inst2vk
+	go build $(LDFLAGS) -o $(DESTDIR)/$(BINARY) ./cmd/inst2any
+	# CGO_ENABLED=1 go build $(LDFLAGS) -o $(DESTDIR)/$(BINARY)_static_cgo ./cmd/inst2any
 
 # Installs our project: copies binaries
 install:
@@ -42,8 +42,8 @@ fmt:
 	go fmt ./...
 
 docker:
-	docker build -f Dockerfile . -t yharwyn/private:inst2vk 	
-	docker push yharwyn/private:inst2vk
+	docker build -f Dockerfile . -t yharwyn/private:inst2any 	
+	docker push yharwyn/private:inst2any
 
 
 # Run all checks

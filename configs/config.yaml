@@ -16,6 +16,6 @@ vk:
 database:
   dsn: ./media.db
 gcs:
-  bucket_name: inst2vk-gcs
-  credentials_file_path: .creds/inst2vk-sa.json
+  bucket_name: inst2any-gcs
+  credentials_file_path: .creds/inst2any-sa.json
 sleep_interval: 30

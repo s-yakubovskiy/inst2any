@@ -1,4 +1,4 @@
-module github.com/s-yakubovskiy/inst2vk
+module github.com/s-yakubovskiy/inst2any
 
 go 1.20
 

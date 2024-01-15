@@ -9,12 +9,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/s-yakubovskiy/inst2vk/pkg/config"
-	"github.com/s-yakubovskiy/inst2vk/pkg/daemon"
-	"github.com/s-yakubovskiy/inst2vk/pkg/db"
-	"github.com/s-yakubovskiy/inst2vk/pkg/instagram"
-	"github.com/s-yakubovskiy/inst2vk/pkg/storage"
-	"github.com/s-yakubovskiy/inst2vk/pkg/vk"
+	"github.com/s-yakubovskiy/inst2any/pkg/config"
+	"github.com/s-yakubovskiy/inst2any/pkg/daemon"
+	"github.com/s-yakubovskiy/inst2any/pkg/db"
+	"github.com/s-yakubovskiy/inst2any/pkg/instagram"
+	"github.com/s-yakubovskiy/inst2any/pkg/storage"
+	"github.com/s-yakubovskiy/inst2any/pkg/vk"
 )
 
 func main() {

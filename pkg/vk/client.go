@@ -3,7 +3,7 @@ package vk
 import (
 	"os"
 
-	"github.com/s-yakubovskiy/inst2vk/pkg/config"
+	"github.com/s-yakubovskiy/inst2any/pkg/config"
 
 	"github.com/SevereCloud/vksdk/v2/api"
 )
