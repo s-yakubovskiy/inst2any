@@ -49,15 +49,15 @@ func main() {
 	vkClient := vk.NewClient(cfg.VK)
 
 	// Create the Daemon
-	mediaWorker := daemon.NewMediaWorker(cfg, database, gcsClient, metaClient, vkClient)
-	storyWorker := daemon.NewStoryWorker(cfg, database, gcsClient, metaClient, vkClient)
+	vkMediaWorker := daemon.NewVKPostWorker(cfg, database, gcsClient, metaClient, vkClient)
+	vkStoryWorker := daemon.NewVKStoryWorker(cfg, database, gcsClient, metaClient, vkClient)
 
 	// Create context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel() // ensure all paths cancel the context to avoid context leak
 
 	// Create Daemon and start
-	daemon := daemon.NewDaemon(mediaWorker, storyWorker)
+	daemon := daemon.NewDaemon(vkMediaWorker, vkStoryWorker)
 	daemon.Start(ctx)
 
 	// Handle SIGINT and SIGTERM.

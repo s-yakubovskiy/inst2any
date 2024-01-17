@@ -16,7 +16,7 @@ import (
 	"github.com/s-yakubovskiy/inst2any/pkg/vk"
 )
 
-type StoryWorker struct {
+type VKStoryWorker struct {
 	cfg        *config.Config
 	database   *sql.DB
 	gcsClient  *storage.GCS
@@ -24,8 +24,8 @@ type StoryWorker struct {
 	vkClient   *vk.Client
 }
 
-func NewStoryWorker(cfg *config.Config, database *sql.DB, gcsClient *storage.GCS, metaClient *instagram.Client, vkClient *vk.Client) *StoryWorker {
-	return &StoryWorker{
+func NewVKStoryWorker(cfg *config.Config, database *sql.DB, gcsClient *storage.GCS, metaClient *instagram.Client, vkClient *vk.Client) *VKStoryWorker {
+	return &VKStoryWorker{
 		cfg:        cfg,
 		database:   database,
 		gcsClient:  gcsClient,
@@ -34,16 +34,20 @@ func NewStoryWorker(cfg *config.Config, database *sql.DB, gcsClient *storage.GCS
 	}
 }
 
-func (m *StoryWorker) Name() string {
-	return "[worker:story]"
+func (m *VKStoryWorker) Name() string {
+	return "VK"
 }
 
-func (m *StoryWorker) Enabled() bool {
-	return m.cfg.Workers.Instagram.Story.Enabled
+func (m *VKStoryWorker) FullName() string {
+	return "vk:worker:story"
 }
 
-func (m *StoryWorker) Work(ctx context.Context) {
-	log.Println(m.Name(), "StoryWorker run")
+func (m *VKStoryWorker) Enabled() bool {
+	return m.cfg.Workers.Vkontakte.Story.Enabled
+}
+
+func (m *VKStoryWorker) Work(ctx context.Context) {
+	log.Println(m.FullName(), "run")
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,11 +67,11 @@ func (m *StoryWorker) Work(ctx context.Context) {
 	}
 }
 
-func (m *StoryWorker) processMedia(ctx context.Context) {
+func (m *VKStoryWorker) processMedia(ctx context.Context) {
 	// Fetch story ids
 	ids, err := m.metaClient.FetchMediaIds("stories")
 	if err != nil {
-		log.Printf("%s Failed to fetch story ids: %v", m.Name(), err)
+		log.Printf("[%s] Failed to fetch story ids: %v", m.FullName(), err)
 		return
 	}
 
@@ -77,29 +81,29 @@ func (m *StoryWorker) processMedia(ctx context.Context) {
 	}
 }
 
-func (m *StoryWorker) syncStory(ctx context.Context, id string) {
-	synced, err := db.CheckAndInsert(id, "stories", m.database)
+func (m *VKStoryWorker) syncStory(ctx context.Context, id string) {
+	synced, err := db.CheckAndInsert(id, "stories", m.Name(), m.database)
 	if err != nil {
-		log.Printf("%s Failed to check and insert story id: %v", m.Name(), err)
+		log.Printf("[%s] Failed to check and insert story id: %v", m.FullName(), err)
 		return
 	}
 
 	if synced {
-		log.Printf("%s (db) %+v %s\n", m.Name(), id, "is already synced.")
+		log.Printf("[%s] (db) %+v %s\n", m.FullName(), id, "is already synced.")
 		return
 	}
 
 	media, err := m.metaClient.FetchMediaDetail(id)
 	// fmt.Printf("[insta] %+v | id %+v\n", story.MediaURL, id)
 	if err != nil {
-		log.Printf("[worker:story]: Failed to fetch story details: %v", err)
+		log.Printf("[%s] Failed to fetch story details: %v", m.FullName(), err)
 		return
 	}
 
 	// download current story to storyReader with retry 3
 	storyReader, err := downloader.DownloadFile(media.MediaURL)
 	if err != nil {
-		fmt.Println(m.Name(), "Error downloading file:", err)
+		fmt.Println("[", m.FullName(), "]", "Error downloading file:", err)
 		return
 	}
 
@@ -107,7 +111,7 @@ func (m *StoryWorker) syncStory(ctx context.Context, id string) {
 	err = m.gcsClient.Upload(ctx, "stories", id, storyReader)
 
 	if err != nil {
-		log.Printf("%s Failed to upload to GCS: %v", m.Name(), err)
+		log.Printf("[%s] Failed to upload to GCS: %v", m.FullName(), err)
 		return
 	}
 
@@ -132,16 +136,16 @@ func (m *StoryWorker) syncStory(ctx context.Context, id string) {
 		err = m.vkClient.UploadStoryVideo(resp.Body)
 	}
 	if err != nil {
-		log.Printf("%s Failed to vk upload: %+v\n", m.Name(), err)
+		log.Printf("[%s] Failed to vk upload: %+v\n", m.FullName(), err)
 		return
 	}
 
 	// If story is successfully uploaded, update the story record as synced in the database
-	err = db.MarkAsSynced(id, "stories", m.database)
+	err = db.MarkAsSynced(id, "stories", m.Name(), m.database)
 	if err != nil {
-		log.Printf("%s (db) Failed to update story as synced: %v", m.Name(), err)
+		log.Printf("[%s] (db) Failed to update story as synced: %v", m.FullName(), err)
 		return
 	}
 
-	log.Printf("%s Successfully transferred & synced story id: %s\n", m.Name(), id)
+	log.Printf("[%s] Successfully transferred & synced story id: %s\n", m.FullName(), id)
 }

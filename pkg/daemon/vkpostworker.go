@@ -16,7 +16,7 @@ import (
 	"github.com/s-yakubovskiy/inst2any/pkg/vk"
 )
 
-type MediaWorker struct {
+type VKPostWorker struct {
 	cfg        *config.Config
 	database   *sql.DB
 	gcsClient  *storage.GCS
@@ -24,8 +24,8 @@ type MediaWorker struct {
 	vkClient   *vk.Client
 }
 
-func NewMediaWorker(cfg *config.Config, database *sql.DB, gcsClient *storage.GCS, metaClient *instagram.Client, vkClient *vk.Client) *MediaWorker {
-	return &MediaWorker{
+func NewVKPostWorker(cfg *config.Config, database *sql.DB, gcsClient *storage.GCS, metaClient *instagram.Client, vkClient *vk.Client) *VKPostWorker {
+	return &VKPostWorker{
 		cfg:        cfg,
 		database:   database,
 		gcsClient:  gcsClient,
@@ -34,16 +34,20 @@ func NewMediaWorker(cfg *config.Config, database *sql.DB, gcsClient *storage.GCS
 	}
 }
 
-func (m *MediaWorker) Name() string {
-	return "[worker:media]"
+func (m *VKPostWorker) Name() string {
+	return "VK"
 }
 
-func (m *MediaWorker) Enabled() bool {
-	return m.cfg.Workers.Instagram.Post.Enabled
+func (m *VKPostWorker) FullName() string {
+	return "vk:worker:post"
 }
 
-func (m *MediaWorker) Work(ctx context.Context) {
-	log.Println(m.Name(), "MediaWorker run")
+func (m *VKPostWorker) Enabled() bool {
+	return m.cfg.Workers.Vkontakte.Post.Enabled
+}
+
+func (m *VKPostWorker) Work(ctx context.Context) {
+	log.Println(m.Name(), " run")
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,11 +67,11 @@ func (m *MediaWorker) Work(ctx context.Context) {
 	}
 }
 
-func (m *MediaWorker) processMedia(ctx context.Context) {
+func (m *VKPostWorker) processMedia(ctx context.Context) {
 	// Fetch media ids
 	ids, err := m.metaClient.FetchMediaIds("media")
 	if err != nil {
-		log.Printf("%s Failed to fetch media ids: %v", m.Name(), err)
+		log.Printf("[%s] Failed to fetch media ids: %v", m.FullName(), err)
 		return
 	}
 
@@ -77,29 +81,29 @@ func (m *MediaWorker) processMedia(ctx context.Context) {
 	}
 }
 
-func (m *MediaWorker) syncMedia(ctx context.Context, id string) {
-	synced, err := db.CheckAndInsert(id, "media", m.database)
+func (m *VKPostWorker) syncMedia(ctx context.Context, id string) {
+	synced, err := db.CheckAndInsert(id, "media", m.Name(), m.database)
 	if err != nil {
-		log.Printf("%s Failed to check and insert media id: %v", m.Name(), err)
+		log.Printf("[%s] Failed to check and insert media id: %v", m.FullName(), err)
 		return
 	}
 
 	if synced {
-		log.Printf("%s (db) %+v %s\n", m.Name(), id, "is already synced.")
+		log.Printf("[%s] (db) %+v %s\n", m.FullName(), id, "is already synced.")
 		return
 	}
 
 	media, err := m.metaClient.FetchMediaDetail(id)
 	// fmt.Printf("[insta] %+v | id %+v\n", media.MediaURL, id)
 	if err != nil {
-		log.Printf("%s Failed to fetch media details: %v", m.Name(), err)
+		log.Printf("[%s] Failed to fetch media details: %v", m.FullName(), err)
 		return
 	}
 
 	// download current media to mediaReader with retry 3
 	mediaReader, err := downloader.DownloadFile(media.MediaURL)
 	if err != nil {
-		fmt.Println(m.Name(), "Error downloading file:", err)
+		fmt.Println("[", m.FullName(), "]", "Error downloading file:", err)
 		return
 	}
 
@@ -107,7 +111,7 @@ func (m *MediaWorker) syncMedia(ctx context.Context, id string) {
 	err = m.gcsClient.Upload(ctx, "posts", id, mediaReader)
 
 	if err != nil {
-		log.Printf("%s Failed to upload to GCS: %v", m.Name(), err)
+		log.Printf("[%s] Failed to upload to GCS: %v", m.FullName(), err)
 		return
 	}
 
@@ -132,16 +136,16 @@ func (m *MediaWorker) syncMedia(ctx context.Context, id string) {
 		err = m.vkClient.UploadVideo(media.Caption, media.Caption, resp.Body)
 	}
 	if err != nil {
-		log.Printf("%s Failed to vk upload: %+v\n", m.Name(), err)
+		log.Printf("[%s] Failed to vk upload: %+v\n", m.FullName(), err)
 		return
 	}
 
 	// If media is successfully uploaded, update the media record as synced in the database
-	err = db.MarkAsSynced(id, "media", m.database)
+	err = db.MarkAsSynced(id, "media", m.Name(), m.database)
 	if err != nil {
-		log.Printf("%s (db) Failed to update media as synced: %v", m.Name(), err)
+		log.Printf("[%s] (db) Failed to update media as synced: %v", m.FullName(), err)
 		return
 	}
 
-	log.Printf("%s Successfully transferred & synced media id: %s\n", m.Name(), id)
+	log.Printf("[%s] Successfully transferred & synced media id: %s\n", m.FullName(), id)
 }

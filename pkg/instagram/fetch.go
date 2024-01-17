@@ -3,7 +3,7 @@ package instagram
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -31,7 +31,7 @@ func (c *Client) FetchMediaIds(field string) ([]string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	var media MediaResponse
 	json.Unmarshal(body, &media)
 
@@ -59,7 +59,7 @@ func (c *Client) FetchMediaDetail(id string) (*MediaDetail, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	var mediaDetail MediaDetail
 	json.Unmarshal(body, &mediaDetail)
 	if mediaDetail.MediaURL == "" {

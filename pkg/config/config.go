@@ -15,15 +15,18 @@ type Config struct {
 	Workers       Workers         `yaml:"workers"`
 }
 
+type WorkerSchema struct {
+	Story struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"story"`
+	Post struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"post"`
+}
+
 type Workers struct {
-	Instagram struct {
-		Story struct {
-			Enabled bool `yaml:"enabled"`
-		} `yaml:"story"`
-		Post struct {
-			Enabled bool `yaml:"enabled"`
-		} `yaml:"post"`
-	} `yaml:"instagram"`
+	Vkontakte WorkerSchema `yaml:"vkontakte"`
+	Telegram  WorkerSchema `yaml:"telegram"`
 }
 
 type InstagramConfig struct {
